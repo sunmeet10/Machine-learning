@@ -1,0 +1,138 @@
+---
+title: "Machine Learning CA - 1"
+subtitle: "Boston Housing Price Prediction using Neural Network"
+author: "Poonam Dhoot - 10399137, Sunmeet Thapar - 10506082"
+output: html_document
+---
+
+```{r global_options, include=FALSE, cache=FALSE}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, 
+               message=FALSE,
+               cache = TRUE,
+               include = TRUE,
+               results = 'show',
+               error = TRUE)
+```
+
+
+
+#### 1. Import Library
+
+```{r}
+#install.packages("Metrics")
+#install.packages("neuralnet")
+library(Metrics)
+library(neuralnet)
+library(MASS)
+data <- Boston
+```
+
+#### 2. Set Seed - To lock the clock
+```{r}
+set.seed(1000)
+```
+
+#### 3. Check for Missing Data
+
+```{r}
+apply(data,2,function(x) sum(is.na(x)))
+```
+
+
+#### 4. Split the Dataset
+##### Train - 80% Test 20%
+
+```{r}
+index <- sample(1:nrow(data),round(0.80*nrow(data)))
+train <- data[index,]
+test <- data[-index,]
+```
+
+
+#### 5. Scale Data
+
+```{r}
+maxs <- apply(data, 2, max)
+maxs
+mins <- apply(data, 2, min)
+mins
+scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+head(scaled)
+```
+
+#### 6. Train-test split
+
+```{r}
+train_set <- scaled[index,]
+test_set <- scaled[-index,]
+```
+
+#### 7. Build model
+
+```{r}
+n <- names(train_set)
+f <- as.formula(paste("medv ~", paste(n[!n %in% "medv"], collapse = " + ")))
+nn <- neuralnet(f,data=train_set,hidden=c(5,3),linear.output=T, act.fct = 'logistic')
+```
+
+#### 8. Predict
+
+```{r}
+pr.nn <- compute(nn,test_set[,1:13])
+```
+
+#### 9. De-scale
+
+```{r}
+pr.nn_ <- pr.nn$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
+test.r <- (test_set$medv)*(max(data$medv)-min(data$medv))+min(data$medv)
+```
+
+#### 10. Calculate MSE
+
+```{r}
+MSE.nn<-mse(test.r, pr.nn_)
+MSE.nn
+```
+
+
+#### 11. Improve Performance - Change Parameter
+
+```{r}
+nn_new <- neuralnet(f,data=train_set,hidden=c(10,5,3),linear.output=T, act.fct = 'logistic')
+pr.nn_new <- compute(nn_new,test_set[,1:13])
+pr.nn_new <- pr.nn_new$net.result*(max(data$medv)-min(data$medv))+min(data$medv)
+```
+
+#### 10. Re-Calculate MSE
+
+```{r}
+MSE.nn_new<-mse(test.r, pr.nn_new)
+MSE.nn_new
+```
+
+
+#### 11. Compare Performance
+
+```{r}
+print(paste('Old MSE :',MSE.nn, 'New MSE :', MSE.nn_new))
+```
+
+#### 12. Plot Actual vs Predicted - Old MSE
+
+```{r}
+plot(test$medv,pr.nn_,col='red',main='Real vs predicted NN',pch=18,cex=0.7, xlab = "Actual", ylab = "Predicted")
+abline(0,1,lwd=2)
+legend('bottomright',legend='NN',pch=18,col='red', bty='n')
+```
+
+#### 12. Plot Actual vs Predicted - New MSE
+
+```{r}
+
+plot(test$medv,pr.nn_new,col='red',main='Real vs predicted NN',pch=18,cex=0.7, xlab = "Actual", ylab = "Predicted")
+abline(0,1,lwd=2)
+legend('bottomright',legend='NN',pch=18,col='red', bty='n')
+```
